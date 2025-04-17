@@ -18,7 +18,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="Contracts\" />
       <Folder Include="Controllers\" />
+      <Folder Include="DataAccess\" />
+      <Folder Include="Interfaces\" />
+      <Folder Include="Application\" />
     </ItemGroup>
 
 </Project>
