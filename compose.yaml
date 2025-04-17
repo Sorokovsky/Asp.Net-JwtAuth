@@ -1,0 +1,6 @@
+﻿services:
+  authorization.core:
+    image: authorization.core
+    build:
+      context: .
+      dockerfile: Authorization.Core/Dockerfile
