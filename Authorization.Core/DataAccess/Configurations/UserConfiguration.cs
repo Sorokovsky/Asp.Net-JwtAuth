@@ -9,6 +9,7 @@ public class UserConfiguration : EntityConfiguration<UserEntity>
     public override void Configure(EntityTypeBuilder<UserEntity> builder)
     {
         builder.ToTable("users");
+        base.Configure(builder);
         builder.Property(user => user.Email).IsRequired().IsUnicode().HasMaxLength(20);
         builder.Property(user => user.Password).IsRequired().HasMaxLength(100);
         builder.Property(user => user.FirstName).IsRequired(false).HasDefaultValue(string.Empty).HasMaxLength(20);

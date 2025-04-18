@@ -8,8 +8,9 @@ public abstract class EntityConfiguration<T> : IEntityTypeConfiguration<T> where
 {
     public virtual void Configure(EntityTypeBuilder<T> builder)
     {
+        var sqlQuery = "now()";
         builder.HasKey(user => user.Id);
-        builder.Property(user => user.CreatedAt).HasDefaultValue(DateTime.UtcNow);
-        builder.Property(user => user.UpdatedAt).HasDefaultValue(DateTime.UtcNow);
+        builder.Property(user => user.CreatedAt).HasDefaultValueSql(sqlQuery);
+        builder.Property(user => user.UpdatedAt).HasDefaultValueSql(sqlQuery);
     }
 }
