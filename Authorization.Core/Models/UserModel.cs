@@ -1,6 +1,7 @@
 ﻿using Authorization.Core.Contracts;
 using Authorization.Core.DataAccess.Entities;
 using CSharpFunctionalExtensions;
+using DevOne.Security.Cryptography.BCrypt;
 
 namespace Authorization.Core.Models;
 
@@ -70,8 +71,10 @@ public class UserModel : BaseModel
                 StatusCodes.Status400BadRequest));
         }
 
+        var hashedPassword = BCryptHelper.HashPassword(password, email);
+
         var model = new UserModel(0, DateTime.UtcNow, DateTime.UtcNow, firstName, middleName, lastName, email,
-            password);
+            hashedPassword);
         return Result.Success<UserModel, ApiError>(model);
     }
 
