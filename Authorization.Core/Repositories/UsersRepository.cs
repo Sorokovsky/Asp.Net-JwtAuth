@@ -1,6 +1,8 @@
-﻿using Authorization.Core.DataAccess;
+﻿using Authorization.Core.Contracts;
+using Authorization.Core.DataAccess;
 using Authorization.Core.DataAccess.Entities;
 using Authorization.Core.Interfaces;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Authorization.Core.Repositories;
@@ -14,34 +16,73 @@ public class UsersRepository : IUsersRepository
         _context = context;
     }
     
-    public async Task<UserEntity> Create(UserEntity user, CancellationToken cancellationToken)
+    public async Task<Result<UserEntity, ApiError>> Create(UserEntity user, CancellationToken cancellationToken)
     {
-        var created = await _context.Users.AddAsync(user, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-        return created.Entity;
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var created = await _context.Users.AddAsync(user, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            return Result.Success<UserEntity, ApiError>(created.Entity);
+        }
+        catch (Exception)
+        {
+            var error = new ApiError(Messages.SomethingWentWrong, StatusCodes.Status500InternalServerError);
+            await transaction.RollbackAsync(cancellationToken);
+            return Result.Failure<UserEntity, ApiError>(error);
+        }
     }
 
-    public async Task<UserEntity?> FindById(long id, CancellationToken cancellationToken)
+    public async Task<Result<UserEntity, ApiError>> FindById(long id, CancellationToken cancellationToken)
     {
-        return await _context.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var error = new ApiError(Messages.UserNotFound, StatusCodes.Status404NotFound);
+        return user is null ? Result.Failure<UserEntity, ApiError>(error) : Result.Success<UserEntity, ApiError>(user);
     }
 
-    public async Task<UserEntity> Update(long id, UserEntity user, CancellationToken cancellationToken)
+    public async Task<Result<UserEntity, ApiError>> Update(long id, UserEntity user, CancellationToken cancellationToken)
     {
-        var candidate = await FindById(id, cancellationToken);
-        if(candidate is null) return null;
-        _context.Users.Attach(candidate);
-        if(!string.IsNullOrWhiteSpace(candidate.Password)) candidate.Password = user.Password;
-        if(!string.IsNullOrWhiteSpace(candidate.Email)) candidate.Email = user.Email;
-        if(!string.IsNullOrWhiteSpace(candidate.FirstName)) candidate.FirstName = user.FirstName;
-        if(!string.IsNullOrWhiteSpace(candidate.LastName)) candidate.LastName = user.LastName;
-        await _context.SaveChangesAsync(cancellationToken);
-        return candidate;
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var candidateResult = await FindById(id, cancellationToken);
+            if (candidateResult.IsFailure) return candidateResult;
+            var candidate = candidateResult.Value;
+            _context.Users.Attach(candidate);
+            if (!string.IsNullOrWhiteSpace(candidate.Password)) candidate.Password = user.Password;
+            if (!string.IsNullOrWhiteSpace(candidate.Email)) candidate.Email = user.Email;
+            if (!string.IsNullOrWhiteSpace(candidate.FirstName)) candidate.FirstName = user.FirstName;
+            if (!string.IsNullOrWhiteSpace(candidate.LastName)) candidate.LastName = user.LastName;
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Result.Success<UserEntity, ApiError>(candidate);
+        }
+        catch (Exception)
+        {
+            var error = new ApiError(Messages.SomethingWentWrong, StatusCodes.Status500InternalServerError);
+            await transaction.RollbackAsync(cancellationToken);
+            return Result.Failure<UserEntity, ApiError>(error);
+        }
     }
 
-    public async Task<long> Delete(long id, CancellationToken cancellationToken)
+    public async Task<Result<UserEntity, ApiError>> Delete(long id, CancellationToken cancellationToken)
     {
-        return await _context.Users.Where(x => x.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var candidateResult = await FindById(id, cancellationToken);
+            if(candidateResult.IsFailure) return candidateResult;
+            await _context.Users.Where(x => x.Id == id)
+                .ExecuteDeleteAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return candidateResult;
+        }
+        catch (Exception)
+        {
+            var error = new ApiError(Messages.SomethingWentWrong, StatusCodes.Status500InternalServerError);
+            await transaction.RollbackAsync(cancellationToken);
+            return Result.Failure<UserEntity, ApiError>(error);
+        }
     }
 }
