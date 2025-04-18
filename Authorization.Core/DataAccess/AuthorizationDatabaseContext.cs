@@ -11,6 +11,8 @@ public class AuthorizationDatabaseContext : DbContext
     {
         _configuration = configuration;
     }
+    
+    public DbSet<UserEntity> Users => Set<UserEntity>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
