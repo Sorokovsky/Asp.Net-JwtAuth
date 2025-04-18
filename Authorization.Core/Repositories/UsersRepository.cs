@@ -1,4 +1,5 @@
-﻿using Authorization.Core.Contracts;
+﻿using System.Linq.Expressions;
+using Authorization.Core.Contracts;
 using Authorization.Core.DataAccess;
 using Authorization.Core.DataAccess.Entities;
 using Authorization.Core.Interfaces;
@@ -15,7 +16,7 @@ public class UsersRepository : IUsersRepository
     {
         _context = context;
     }
-    
+
     public async Task<Result<UserEntity, ApiError>> Create(UserEntity user, CancellationToken cancellationToken)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
@@ -35,12 +36,16 @@ public class UsersRepository : IUsersRepository
 
     public async Task<Result<UserEntity, ApiError>> FindById(long id, CancellationToken cancellationToken)
     {
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        var error = new ApiError(Messages.UserNotFound, StatusCodes.Status404NotFound);
-        return user is null ? Result.Failure<UserEntity, ApiError>(error) : Result.Success<UserEntity, ApiError>(user);
+        return await Find(user => user.Id == id, cancellationToken);
     }
 
-    public async Task<Result<UserEntity, ApiError>> Update(long id, UserEntity user, CancellationToken cancellationToken)
+    public async Task<Result<UserEntity, ApiError>> FindByEmail(string email, CancellationToken cancellationToken)
+    {
+        return await Find(user => user.Email == email, cancellationToken);
+    }
+
+    public async Task<Result<UserEntity, ApiError>> Update(long id, UserEntity user,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -71,7 +76,7 @@ public class UsersRepository : IUsersRepository
         try
         {
             var candidateResult = await FindById(id, cancellationToken);
-            if(candidateResult.IsFailure) return candidateResult;
+            if (candidateResult.IsFailure) return candidateResult;
             await _context.Users.Where(x => x.Id == id)
                 .ExecuteDeleteAsync(cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
@@ -84,5 +89,13 @@ public class UsersRepository : IUsersRepository
             await transaction.RollbackAsync(cancellationToken);
             return Result.Failure<UserEntity, ApiError>(error);
         }
+    }
+
+    private async Task<Result<UserEntity, ApiError>> Find(Expression<Func<UserEntity, bool>> predicate,
+        CancellationToken cancellationToken)
+    {
+        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(predicate, cancellationToken);
+        var error = new ApiError(Messages.UserNotFound, StatusCodes.Status404NotFound);
+        return user is null ? Result.Failure<UserEntity, ApiError>(error) : Result.Success<UserEntity, ApiError>(user);
     }
 }
