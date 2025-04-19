@@ -68,9 +68,7 @@ public class UsersService : IUsersService
         return new UserEntity
         {
             Email = model.Email,
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-            MiddleName = model.MiddleName,
+            FullName = model.FullName,
             Password = model.Password
         };
     }

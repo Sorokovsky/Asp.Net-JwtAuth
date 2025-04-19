@@ -13,8 +13,18 @@ public class UserConfiguration : EntityConfiguration<UserEntity>
         base.Configure(builder);
         builder.Property(user => user.Email).IsRequired().IsUnicode().HasMaxLength(UserModel.EmailMaxLength);
         builder.Property(user => user.Password).IsRequired().HasMaxLength(UserModel.PasswordMaxLength);
-        builder.Property(user => user.FirstName).IsRequired(false).HasDefaultValue(string.Empty).HasMaxLength(UserModel.FirstNameMaxLength);
-        builder.Property(user => user.LastName).IsRequired(false).HasDefaultValue(string.Empty).HasMaxLength(UserModel.LastNameMaxLength);
-        builder.Property(user => user.MiddleName).IsRequired(false).HasDefaultValue(string.Empty).HasMaxLength(UserModel.MiddleNameMaxLength);
+        builder.ComplexProperty(user => user.FullName, propertyBuilder =>
+        {
+            propertyBuilder.Property(x => x.FirstName)
+                .HasColumnName("first_name")
+                .HasMaxLength(FullName.FirstNameMaxLength)
+                .HasDefaultValue(string.Empty);
+            propertyBuilder.Property(x => x.MiddleName).HasColumnName("middle_name")
+                .HasMaxLength(FullName.MiddleNameMaxLength)
+                .HasDefaultValue(string.Empty);
+            propertyBuilder.Property(x => x.LastName).HasColumnName("last_name")
+                .HasMaxLength(FullName.LastNameMaxLength)
+                .HasDefaultValue(string.Empty);
+        });
     }
 }

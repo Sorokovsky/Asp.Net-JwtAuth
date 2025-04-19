@@ -54,10 +54,9 @@ public class UsersRepository : IUsersRepository
             if (candidateResult.IsFailure) return candidateResult;
             var candidate = candidateResult.Value;
             _context.Users.Attach(candidate);
-            if (!string.IsNullOrWhiteSpace(candidate.Password)) candidate.Password = user.Password;
-            if (!string.IsNullOrWhiteSpace(candidate.Email)) candidate.Email = user.Email;
-            if (!string.IsNullOrWhiteSpace(candidate.FirstName)) candidate.FirstName = user.FirstName;
-            if (!string.IsNullOrWhiteSpace(candidate.LastName)) candidate.LastName = user.LastName;
+            if (!string.IsNullOrWhiteSpace(user.Password)) candidate.Password = user.Password;
+            if (!string.IsNullOrWhiteSpace(user.Email)) candidate.Email = user.Email;
+            candidate.FullName = user.FullName;
             await _context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Result.Success<UserEntity, ApiError>(candidate);

@@ -7,33 +7,19 @@ namespace Authorization.Core.Models;
 
 public class UserModel : BaseModel
 {
-    public const int FirstNameMaxLength = 20;
-
-    public const int LastNameMaxLength = 20;
-
-    public const int MiddleNameMaxLength = 20;
-
     public const int EmailMaxLength = 100;
 
     public const int PasswordMaxLength = 30;
 
-    private UserModel(long id, DateTime createdAt, DateTime updatedAt, string firstName, string middleName,
-        string lastName, string email, string password)
+    private UserModel(long id, DateTime createdAt, DateTime updatedAt, FullName fullName, string email, string password)
         : base(id, createdAt, updatedAt)
     {
-        FirstName = firstName;
-        LastName = lastName;
         Email = email;
         Password = password;
-        MiddleName = middleName;
+        FullName = fullName;
     }
 
-    public string FirstName { get; }
-
-    public string LastName { get; }
-
-    public string MiddleName { get; }
-
+    public FullName FullName { get; }
     public string Email { get; }
 
     public string Password { get; }
@@ -41,23 +27,8 @@ public class UserModel : BaseModel
     public static Result<UserModel, ApiError> Create(string firstName, string lastName, string middleName, string email,
         string password)
     {
-        if (string.IsNullOrWhiteSpace(firstName) || firstName.Length > FirstNameMaxLength)
-        {
-            return Result.Failure<UserModel, ApiError>(new ApiError(Messages.InvalidFirstName,
-                StatusCodes.Status400BadRequest));
-        }
-
-        if (string.IsNullOrWhiteSpace(lastName) || lastName.Length > LastNameMaxLength)
-        {
-            return Result.Failure<UserModel, ApiError>(new ApiError(Messages.InvalidLastName,
-                StatusCodes.Status400BadRequest));
-        }
-
-        if (string.IsNullOrWhiteSpace(middleName) || middleName.Length > MiddleNameMaxLength)
-        {
-            return Result.Failure<UserModel, ApiError>(new ApiError(Messages.InvalidMiddleName,
-                StatusCodes.Status400BadRequest));
-        }
+        var fullNameResult = FullName.Create(firstName, lastName, middleName);
+        if (fullNameResult.IsFailure) return Result.Failure<UserModel, ApiError>(fullNameResult.Error);
 
         if (string.IsNullOrWhiteSpace(email) || email.Length > EmailMaxLength)
         {
@@ -73,7 +44,7 @@ public class UserModel : BaseModel
 
         var hashedPassword = BCryptHelper.HashPassword(password, email);
 
-        var model = new UserModel(0, DateTime.UtcNow, DateTime.UtcNow, firstName, middleName, lastName, email,
+        var model = new UserModel(0, DateTime.UtcNow, DateTime.UtcNow, fullNameResult.Value, email,
             hashedPassword);
         return Result.Success<UserModel, ApiError>(model);
     }
@@ -84,9 +55,7 @@ public class UserModel : BaseModel
             entity.Id,
             entity.CreatedAt,
             entity.UpdatedAt,
-            entity.FirstName,
-            entity.MiddleName,
-            entity.LastName,
+            entity.FullName,
             entity.Email,
             entity.Password);
     }
